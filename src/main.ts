@@ -1,1 +1,6 @@
-export default 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36'
+import versions from './versions.yml'
+
+const webkitVersion = `${versions.webkit.major}.${versions.webkit.minor}`
+const chromeVersion = `${versions.chrome.major}.${versions.chrome.minor}`
+const mozillaVersion = `${versions.mozilla.major}.${versions.mozilla.minor}`
+export default `Mozilla/${mozillaVersion} (Windows NT 10.0; Win64; x64) AppleWebKit/${webkitVersion} (KHTML, like Gecko) Chrome/${chromeVersion}.0.0.0 Safari/${webkitVersion}`
