@@ -16,5 +16,6 @@
     "tsconfig-jaid-node": "^10.0.0",
     "typescript": "^5.9.3",
     "zeug": "^2.1.0"
-  }
+  },
+  "funding": "https://github.com/sponsors/Jaid"
 }
