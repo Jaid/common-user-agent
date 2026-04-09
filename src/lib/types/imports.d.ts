@@ -1,7 +1,11 @@
+/* eslint-disable  perfectionist/sort-object-types */
+
 interface Versions {
   chrome: {
     major: number
     minor: number
+    build: number
+    patch: number
   }
   mozilla: {
     major: number
