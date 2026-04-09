@@ -1,9 +1,11 @@
-webkit:
-  major: 537
-  minor: 36
-chrome:
-  major: 145
+chrome: 
+  major: 147
   minor: 0
-mozilla:
+  build: 7727
+  patch: 56
+mozilla: 
   major: 5
   minor: 0
+webkit: 
+  major: 537
+  minor: 36
