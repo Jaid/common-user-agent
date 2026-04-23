@@ -1,3 +1,3 @@
 # common-user-agent
 
-**single-string library providing a User-Agent value that is commonly used by real web browsers today**
+**single-string export of a User-Agent header value that is commonly used by real web browsers today**
