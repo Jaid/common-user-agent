@@ -21,6 +21,7 @@
     "eslint": "^10.2.1",
     "eslint-config-jaid": "^26.0.0",
     "tsconfig-jaid-bun": "^14.1.0",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "yaml": "^2.8.3"
   }
 }

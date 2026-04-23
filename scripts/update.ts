@@ -1,3 +1,5 @@
+import yaml from 'yaml'
+
 type ResponseJson = {
   browser: 'chrome'
   channel: string
@@ -40,5 +42,5 @@ const dump = {
   mozilla: await getMozillaVersion(),
   webkit: await getWebKitVersion(),
 }
-const yamlText = Bun.YAML.stringify(dump, null, 2)
-await Bun.write('./src/versions.yml', yamlText)
+const yamlText = yaml.stringify(dump)
+await Bun.write('src/versions.yml', yamlText)
