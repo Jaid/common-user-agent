@@ -55,15 +55,42 @@ jobs:
               return 'patch'
             }
 
+            const getRepositorySlug = () => {
+              const repository = event.repository?.full_name ?? github.repository
+              if (!repository) {
+                throw new Error('Could not determine repository slug.')
+              }
+              return repository
+            }
+
             const getPackageJsonAt = async (ref: string) => {
               if (!ref || /^0+$/.test(ref)) {
                 return undefined
               }
-              const result = await Bun.$`git show ${`${ref}:package.json`}`.nothrow().text()
-              if (!result.trim()) {
+              const url = new URL(`${github.apiUrl ?? 'https://api.github.com'}/repos/${getRepositorySlug()}/contents/package.json`)
+              url.searchParams.set('ref', ref)
+              const headers: Record<string, string> = {
+                accept: 'application/vnd.github+json',
+                'x-github-api-version': '2022-11-28',
+              }
+              if (github.token) {
+                headers.authorization = `Bearer ${github.token}`
+              }
+              const response = await fetch(url, {
+                headers,
+              })
+              if (response.status === 404) {
                 return undefined
               }
-              return JSON.parse(result) as {version?: string}
+              if (!response.ok) {
+                throw new Error(`Failed to fetch package.json at ${ref}: HTTP ${response.status} ${response.statusText}`)
+              }
+              const json = await response.json() as {content?: string, encoding?: string}
+              if (json.encoding !== 'base64' || !json.content) {
+                throw new Error(`Unexpected package.json response at ${ref}.`)
+              }
+              const content = Buffer.from(json.content.replaceAll(/\s/g, ''), 'base64').toString('utf8')
+              return JSON.parse(content) as {version?: string}
             }
 
             const finish = (message: string, payload?: Record<string, unknown>) => {
