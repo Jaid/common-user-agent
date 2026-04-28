@@ -1,8 +1,8 @@
 chrome:
-  major: 147
+  major: 148
   minor: 0
-  build: 7727
-  patch: 117
+  build: 7778
+  patch: 56
 mozilla:
   major: 5
   minor: 0
