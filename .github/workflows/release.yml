@@ -119,6 +119,6 @@ jobs:
         run: bun run test
       - name: publish
         working-directory: dist/common-user-agent/production
-        run: bun publish
+        run: npm publish --access public --provenance
         env:
           NPM_CONFIG_TOKEN: ${{ secrets.npmToken }}
