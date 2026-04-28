@@ -18,9 +18,107 @@ jobs:
         uses: oven-sh/setup-bun@v2.2.0
       - name: install
         run: bun install --frozen-lockfile
+      - name: build
+        uses: jaidlab/action-run-typescript@main
+        with:
+          code: |-
+            type JsonObject = Record<string, unknown>
+
+            const fs = await import('node:fs/promises')
+            const path = await import('node:path')
+
+            const packageJson = await Bun.file('package.json').json() as JsonObject
+            const packageName = typeof packageJson.name === 'string' ? packageJson.name : path.basename(process.cwd())
+            const outputFolder = path.posix.join('dist', packageName, 'production')
+            const outputScriptFileName = 'main.js'
+            const outputTypesFileName = 'main.d.ts'
+
+            await fs.rm(outputFolder, {
+              force: true,
+              recursive: true,
+            })
+            await fs.mkdir(outputFolder, {
+              recursive: true,
+            })
+
+            const logOutputFile = async (file: string) => {
+              const stat = await fs.stat(file)
+              core.info(`${file} (${stat.size} b)`)
+            }
+
+            const writeOutputFile = async (fileName: string, content: string) => {
+              const outputFile = path.posix.join(outputFolder, fileName)
+              await Bun.write(outputFile, content)
+              await logOutputFile(outputFile)
+            }
+
+            const copyExistingFile = async (inputFile: string, outputFileName: string) => {
+              try {
+                const outputFile = path.posix.join(outputFolder, outputFileName)
+                await fs.copyFile(inputFile, outputFile)
+                await logOutputFile(outputFile)
+              } catch (error) {
+                if (!(error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT')) {
+                  throw error
+                }
+              }
+            }
+
+            const build = await Bun.build({
+              entrypoints: ['src/main.ts'],
+              minify: true,
+              target: 'node',
+            })
+            if (!build.success) {
+              for (const log of build.logs) {
+                core.error(log.message)
+              }
+              throw new Error('Build failed.')
+            }
+            const scriptArtifact = build.outputs.find(output => output.kind === 'entry-point')
+            if (!scriptArtifact) {
+              throw new Error('Build did not emit an entry point.')
+            }
+
+            const outputPackageJsonKeys = [
+              'name',
+              'version',
+              'description',
+              'keywords',
+              'author',
+              'homepage',
+              'funding',
+              'license',
+              'repository',
+              'bugs',
+              'engines',
+            ]
+            const outputPackageJson = {} as JsonObject
+            for (const key of outputPackageJsonKeys) {
+              if (Object.hasOwn(packageJson, key)) {
+                outputPackageJson[key] = packageJson[key]
+              }
+            }
+            outputPackageJson.type = 'module'
+            outputPackageJson.exports = {
+              '.': {
+                types: `./${outputTypesFileName}`,
+                import: `./${outputScriptFileName}`,
+                default: `./${outputScriptFileName}`,
+              },
+            }
+
+            await Promise.all([
+              writeOutputFile('package.json', `${JSON.stringify(outputPackageJson, null, 2)}\n`),
+              writeOutputFile(outputScriptFileName, await scriptArtifact.text()),
+              writeOutputFile(outputTypesFileName, 'declare const commonUserAgent: string\nexport default commonUserAgent\n'),
+              copyExistingFile('license.txt', 'LICENSE'),
+              copyExistingFile('readme.md', 'README.md'),
+            ])
       - name: test
         run: bun run test
       - name: publish
+        working-directory: dist/common-user-agent/production
         run: bun publish
         env:
           NPM_CONFIG_TOKEN: ${{ secrets.npmToken }}
