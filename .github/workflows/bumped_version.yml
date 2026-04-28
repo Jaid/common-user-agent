@@ -1,0 +1,12 @@
+name: bumped_version
+on:
+  repository_dispatch:
+    types: [bumped_version]
+jobs:
+  bump:
+    name: bump
+    permissions:
+      contents: write
+    uses: jaid/workflows/.github/workflows/bump.yml@main
+    with:
+      bumpAmount: ${{ github.event.client_payload.bumpAmount }}

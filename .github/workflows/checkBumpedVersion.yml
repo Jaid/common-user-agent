@@ -1,0 +1,105 @@
+name: checkBumpedVersion
+on:
+  push:
+    branches: [main]
+    paths: [package.json]
+jobs:
+  check:
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: write
+    steps:
+      - name: checkout
+        uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 0
+      - name: checkVersion
+        id: checkVersion
+        uses: jaidlab/action-run-typescript@main
+        with:
+          globals: |-
+            {
+              event: ${{ toJson(github.event) }},
+              sha: ${{ toJson(github.sha) }}
+            }
+          code: |-
+            type Semver = {
+              major: number
+              minor: number
+              patch: number
+            }
+
+            const parseSemver = (version: string): Semver => {
+              const match = /^(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)(?:[-+].*)?$/.exec(version)
+              if (!match?.groups) {
+                throw new Error(`Unsupported package version: ${version}`)
+              }
+              return {
+                major: Number.parseInt(match.groups.major, 10),
+                minor: Number.parseInt(match.groups.minor, 10),
+                patch: Number.parseInt(match.groups.patch, 10),
+              }
+            }
+
+            const compareSemver = (left: Semver, right: Semver) => {
+              return left.major - right.major || left.minor - right.minor || left.patch - right.patch
+            }
+
+            const getBumpAmount = (oldVersion: Semver, newVersion: Semver) => {
+              if (newVersion.major > oldVersion.major) {
+                return 'major'
+              }
+              if (newVersion.minor > oldVersion.minor) {
+                return 'minor'
+              }
+              return 'patch'
+            }
+
+            const getPackageJsonAt = async (ref: string) => {
+              if (!ref || /^0+$/.test(ref)) {
+                return undefined
+              }
+              const result = await Bun.$`git show ${`${ref}:package.json`}`.nothrow().text()
+              if (!result.trim()) {
+                return undefined
+              }
+              return JSON.parse(result) as {version?: string}
+            }
+
+            const finish = (message: string, payload?: Record<string, unknown>) => {
+              if (!payload) {
+                core.setOutput('didBump', 'false')
+                core.notice(message)
+                return
+              }
+              core.setOutput('didBump', 'true')
+              core.setOutput('payload', JSON.stringify(payload))
+              core.notice(message)
+            }
+
+            const oldPackageJson = await getPackageJsonAt(event.before)
+            const newPackageJson = await Bun.file('package.json').json() as {version?: string}
+            const oldVersionRaw = oldPackageJson?.version
+            const newVersionRaw = newPackageJson.version
+            if (!oldVersionRaw || !newVersionRaw || oldVersionRaw === newVersionRaw) {
+              finish(`No package version bump detected (${oldVersionRaw ?? '∅'} → ${newVersionRaw ?? '∅'}).`)
+            } else {
+              const oldVersion = parseSemver(oldVersionRaw)
+              const newVersion = parseSemver(newVersionRaw)
+              if (compareSemver(newVersion, oldVersion) <= 0) {
+                finish(`Package version changed, but did not increase (${oldVersionRaw} → ${newVersionRaw}).`)
+              } else {
+                finish(`Package version bump detected (${oldVersionRaw} → ${newVersionRaw}).`, {
+                  bumpAmount: getBumpAmount(oldVersion, newVersion),
+                  newVersion: newVersionRaw,
+                  oldVersion: oldVersionRaw,
+                  sha,
+                })
+              }
+            }
+      - name: triggerDispatch
+        if: ${{ steps.checkVersion.outputs.didBump == 'true' }}
+        uses: peter-evans/repository-dispatch@v4.0.1
+        with:
+          event-type: bumped_version
+          client-payload: ${{ steps.checkVersion.outputs.payload }}
