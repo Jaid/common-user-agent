@@ -1,6 +1,6 @@
 {
   "name": "common-user-agent",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "type": "module",
   "description": "single-string export of a User-Agent header value that is commonly used by real web browsers today",
   "funding": "https://github.com/sponsors/Jaid",
